@@ -989,6 +989,131 @@ router.put('/services/:ProfessionalService_id', auth, async (req, res) => {
   }
 });
 
+// Mark service as complete
+router.post('/services/:ProfessionalService_id/complete', auth, async (req, res) => {
+  try {
+    const { ProfessionalService_id } = req.params;
+    const { completion_notes } = req.body;
+
+    if (!ProfessionalService_id) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing professional service ID'
+      });
+    }
+
+    const service = await ProfessionalService.findOne({ 
+      ProfessionalService_id: parseInt(ProfessionalService_id) 
+    });
+
+    if (!service) {
+      return res.status(404).json({
+        success: false,
+        message: 'Professional service not found'
+      });
+    }
+
+    // Update service to completed status
+    const updatedService = await ProfessionalService.findOneAndUpdate(
+      { ProfessionalService_id: parseInt(ProfessionalService_id) },
+      {
+        service_status: 'Completed',
+        payment_status: 'Completed',
+        completion_date: new Date(),
+        notes: completion_notes || service.notes,
+        UpdatedBy: req.user.user_id,
+        UpdatedAt: new Date()
+      },
+      { new: true }
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: 'Professional service marked as complete',
+      data: updatedService
+    });
+  } catch (error) {
+    console.error('Service completion error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error completing professional service',
+      error: error.message
+    });
+  }
+});
+
+// Record partial payment for service
+router.post('/services/:ProfessionalService_id/partial-payment', auth, async (req, res) => {
+  try {
+    const { ProfessionalService_id } = req.params;
+    const { partial_amount, payment_notes } = req.body;
+
+    if (!ProfessionalService_id) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing professional service ID'
+      });
+    }
+
+    if (!partial_amount || partial_amount <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Valid partial payment amount is required'
+      });
+    }
+
+    const service = await ProfessionalService.findOne({ 
+      ProfessionalService_id: parseInt(ProfessionalService_id) 
+    });
+
+    if (!service) {
+      return res.status(404).json({
+        success: false,
+        message: 'Professional service not found'
+      });
+    }
+
+    if (partial_amount > service.final_amount) {
+      return res.status(400).json({
+        success: false,
+        message: 'Partial payment amount cannot exceed total service amount'
+      });
+    }
+
+    // Update service payment status to partial
+    const updatedService = await ProfessionalService.findOneAndUpdate(
+      { ProfessionalService_id: parseInt(ProfessionalService_id) },
+      {
+        payment_status: 'Partial',
+        notes: payment_notes ? `${service.notes}\nPartial Payment: ${partial_amount} - ${payment_notes}` : service.notes,
+        UpdatedBy: req.user.user_id,
+        UpdatedAt: new Date()
+      },
+      { new: true }
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: 'Partial payment recorded successfully',
+      data: {
+        service: updatedService,
+        payment_info: {
+          partial_amount_paid: partial_amount,
+          remaining_amount: service.final_amount - partial_amount,
+          total_amount: service.final_amount
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Partial payment error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error recording partial payment',
+      error: error.message
+    });
+  }
+});
+
 /**
  * ============================================================================
  * 5. CUSTOMER TRANSACTION ENDPOINTS
