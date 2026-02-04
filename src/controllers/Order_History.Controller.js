@@ -39,7 +39,7 @@ const getOrderHistory = async (req, res) => {
       // Get related data manually
       const [floorData, tableData, tableBookingStatusData, employeeData] = await Promise.all([
         Floor.findOne({ Floor_id: order.Floor_id, Status: true }),
-        Table.findOne({ Table_id: order.Table_id, Status: true }),
+        Table.findOne({ Table_id: order.Table_id }),
         TableBookingStatus.findOne({ Table_Booking_Status_id: order.Table_Booking_Status_id, Status: true }),
         User.findOne({ user_id: order.get_order_Employee_id, Status: true })
       ]);
@@ -73,7 +73,7 @@ const getOrderHistory = async (req, res) => {
         },
         table: {
           table_id: tableData?.Table_id,
-          table_name: tableData?.['Table-name'],
+          table_name: tableData?.Title,
           table_code: tableData?.['Table-code']
         },
         floor: {
@@ -162,7 +162,7 @@ const getOrderHistoryByDateRange = async (req, res) => {
       // Get related data manually
       const [floorData, tableData, tableBookingStatusData, employeeData] = await Promise.all([
         Floor.findOne({ Floor_id: order.Floor_id, Status: true }),
-        Table.findOne({ Table_id: order.Table_id, Status: true }),
+        Table.findOne({ Table_id: order.Table_id }),
         TableBookingStatus.findOne({ Table_Booking_Status_id: order.Table_Booking_Status_id, Status: true }),
         User.findOne({ user_id: order.get_order_Employee_id, Status: true })
       ]);
@@ -194,7 +194,7 @@ const getOrderHistoryByDateRange = async (req, res) => {
         },
         table: {
           table_id: tableData?.Table_id,
-          table_name: tableData?.['Table-name'],
+          table_name: tableData?.Title,
           table_code: tableData?.['Table-code']
         },
         floor: {
@@ -274,7 +274,7 @@ const getOrderHistoryByStatus = async (req, res) => {
       // Get related data manually
       const [floorData, tableData, tableBookingStatusData, employeeData] = await Promise.all([
         Floor.findOne({ Floor_id: order.Floor_id, Status: true }),
-        Table.findOne({ Table_id: order.Table_id, Status: true }),
+        Table.findOne({ Table_id: order.Table_id }),
         TableBookingStatus.findOne({ Table_Booking_Status_id: order.Table_Booking_Status_id, Status: true }),
         User.findOne({ user_id: order.get_order_Employee_id, Status: true })
       ]);
@@ -383,7 +383,7 @@ const getOrderHistoryByTable = async (req, res) => {
       // Get related data manually
       const [floorData, tableData, tableBookingStatusData, employeeData] = await Promise.all([
         Floor.findOne({ Floor_id: order.Floor_id, Status: true }),
-        Table.findOne({ Table_id: order.Table_id, Status: true }),
+        Table.findOne({ Table_id: order.Table_id }),
         TableBookingStatus.findOne({ Table_Booking_Status_id: order.Table_Booking_Status_id, Status: true }),
         User.findOne({ user_id: order.get_order_Employee_id, Status: true })
       ]);
@@ -516,7 +516,7 @@ const getOrderHistoryByClientMobileNo = async (req, res) => {
       // Get related data manually
       const [floorData, tableData, tableBookingStatusData, employeeData] = await Promise.all([
         Floor.findOne({ Floor_id: order.Floor_id, Status: true }),
-        Table.findOne({ Table_id: order.Table_id, Status: true }),
+        Table.findOne({ Table_id: order.Table_id }),
         TableBookingStatus.findOne({ Table_Booking_Status_id: order.Table_Booking_Status_id, Status: true }),
         User.findOne({ user_id: order.get_order_Employee_id, Status: true })
       ]);
@@ -611,9 +611,18 @@ const getOrderHistoryByEmployeeId = async (req, res) => {
       });
     }
 
+    // Validate that employee_id is a valid number
+    const employeeIdNum = parseInt(employee_id, 10);
+    if (isNaN(employeeIdNum)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Employee ID must be a valid number'
+      });
+    }
+
     const query = {
       Status: true,
-      get_order_Employee_id: employee_id
+      get_order_Employee_id: employeeIdNum
     };
 
     const orders = await Quick_Order.find(query)
@@ -649,7 +658,7 @@ const getOrderHistoryByEmployeeId = async (req, res) => {
       // Get related data manually
       const [floorData, tableData, tableBookingStatusData, employeeData] = await Promise.all([
         Floor.findOne({ Floor_id: order.Floor_id, Status: true }),
-        Table.findOne({ Table_id: order.Table_id, Status: true }),
+        Table.findOne({ Table_id: order.Table_id }),
         TableBookingStatus.findOne({ Table_Booking_Status_id: order.Table_Booking_Status_id, Status: true }),
         User.findOne({ user_id: order.get_order_Employee_id, Status: true })
       ]);
@@ -734,41 +743,121 @@ const getOrderHistoryByEmployeeId = async (req, res) => {
 const getOrderHistoryByAuth = async (req, res) => {
   try {
     const userId = req.user.user_id;
-    
-    const orderHistories = await Order_History.find({ CreateBy: userId, Status: true }).sort({ CreateAt: -1 });
-    
-    if (!orderHistories || orderHistories.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'Order histories not found for current user'
+    const { page = 1, limit = 10 } = req.query;
+    const skip = (page - 1) * limit;
+
+    const query = {
+      Status: true,
+      get_order_Employee_id: userId
+    };
+
+    const orders = await Quick_Order.find(query)
+      .sort({ CreateAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    const totalOrders = await Quick_Order.countDocuments(query);
+
+    if (totalOrders === 0) {
+      return res.status(200).json({
+        success: true,
+        message: 'No orders found for current user',
+        data: {
+          orders: [],
+          pagination: {
+            current_page: parseInt(page),
+            total_pages: 0,
+            total_orders: 0,
+            orders_per_page: parseInt(limit)
+          }
+        }
       });
     }
 
-    // Manually fetch related data for all order histories
-    const orderHistoriesResponse = await Promise.all(orderHistories.map(async (orderHistory) => {
-      const [createByUser, updatedByUser] = await Promise.all([
-        orderHistory.CreateBy ? User.findOne({ user_id: orderHistory.CreateBy }) : null,
-        orderHistory.UpdatedBy ? User.findOne({ user_id: orderHistory.UpdatedBy }) : null
+    // Process orders similar to main function
+    const processedOrders = await Promise.all(orders.map(async (order) => {
+      const currentTime = new Date();
+      const orderTime = new Date(order.CreateAt);
+      const lateTime = Math.floor((currentTime - orderTime) / (1000 * 60));
+
+      // Get related data manually
+      const [floorData, tableData, tableBookingStatusData, employeeData] = await Promise.all([
+        Floor.findOne({ Floor_id: order.Floor_id, Status: true }),
+        Table.findOne({ Table_id: order.Table_id }),
+        TableBookingStatus.findOne({ Table_Booking_Status_id: order.Table_Booking_Status_id, Status: true }),
+        User.findOne({ user_id: order.get_order_Employee_id, Status: true })
       ]);
 
-      const orderHistoryObj = orderHistory.toObject();
-      orderHistoryObj.CreateBy = createByUser ? 
-        { user_id: createByUser.user_id, Name: createByUser.Name, email: createByUser.email } : null;
-      orderHistoryObj.UpdatedBy = updatedByUser ? 
-        { user_id: updatedByUser.user_id, Name: updatedByUser.Name, email: updatedByUser.email } : null;
+      const itemDetails = await Promise.all(order.item_ids.map(async (item) => {
+        const itemData = await Items.findOne({ Items_id: item.item_id });
+        return {
+          item_id: item.item_id,
+          name: itemData ? itemData['item-name'] : 'Unknown Item',
+          quantity: item.quantity,
+          price: itemData ? itemData['item-price'] : 0,
+          total_item_price: itemData ? (itemData['item-price'] * item.quantity) : 0
+        };
+      }));
 
-      return orderHistoryObj;
+      const totalItemsInOrder = itemDetails.reduce((sum, item) => sum + item.quantity, 0);
+
+      return {
+        order: {
+          order_id: order.Quick_Order_id,
+          order_status: order.Order_Status,
+          persons_count: order.Persons_Count,
+          late_time: lateTime,
+          waiting_time: order.Wating_Time,
+          created_at: order.CreateAt
+        },
+        client: {
+          mobile_no: order.client_mobile_no
+        },
+        table: {
+          table_id: tableData?.Table_id,
+          table_name: tableData?.Title,
+          table_code: tableData?.['Table-code']
+        },
+        floor: {
+          floor_id: floorData?.Floor_id,
+          floor_name: floorData?.Floor_Name
+        },
+        products: {
+          total_items_in_order: totalItemsInOrder,
+          items: itemDetails
+        },
+        tax: {
+          tax_percentage: order.Tax,
+          tax_amount: Math.round((order.SubTotal * order.Tax) / 100)
+        },
+        subtotal: order.SubTotal,
+        total: order.Total,
+        employee: {
+          employee_id: employeeData?.Employee_id,
+          name: employeeData?.Name || 'Unknown Employee'
+        }
+      };
     }));
 
     res.status(200).json({
       success: true,
-      count: orderHistoriesResponse.length,
-      data: orderHistoriesResponse
+      message: 'Order history for current user retrieved successfully',
+      data: {
+        orders: processedOrders,
+        pagination: {
+          current_page: parseInt(page),
+          total_pages: Math.ceil(totalOrders / limit),
+          total_orders: totalOrders,
+          orders_per_page: parseInt(limit)
+        }
+      }
     });
+
   } catch (error) {
+    console.error('Error in getOrderHistoryByAuth:', error);
     res.status(500).json({
       success: false,
-      message: 'Error fetching order histories',
+      message: 'Internal server error',
       error: error.message
     });
   }
