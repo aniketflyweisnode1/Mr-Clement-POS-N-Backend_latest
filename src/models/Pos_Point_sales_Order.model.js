@@ -50,7 +50,7 @@ const posPointSalesOrderSchema = new mongoose.Schema({
   },
   transaction_id: {
     type: Number,
-    ref: 'Transaction',
+    ref: 'CustomerTransaction',
     default: null
   },
   Customer_id: {

@@ -7,12 +7,233 @@ All endpoints require authentication via Bearer token in Authorization header.
 ---
 
 ## Table of Contents
+0. [Payment Methods](#0-payment-methods)
 1. [Hardware Sales](#1-hardware-sales)
 2. [Software Subscriptions](#2-software-subscriptions)
 3. [Add-On Modules](#3-add-on-modules)
 4. [Professional Services](#4-professional-services)
 5. [Customer Transactions](#5-customer-transactions)
 6. [Revenue Summary](#6-revenue-summary)
+
+---
+
+## 0. Payment Methods
+
+Base URL: `/api/v1/admin/payments`
+
+This section covers basic payment method management (e.g., Cash, Card, Bank Transfer).
+
+### Create Payment Method
+**POST** `/create`
+
+Creates a new payment method.
+
+**Request Body:**
+```json
+{
+  "name": "Cash",
+  "Status": true
+}
+```
+
+**Required Fields:**
+- `name` (string)
+
+**Optional Fields:**
+- `Status` (boolean, default: true)
+
+**Response:** `201 Created`
+```json
+{
+  "success": true,
+  "message": "Payment created successfully",
+  "data": {
+    "Payment_id": 1,
+    "name": "Cash",
+    "Status": true,
+    "CreateBy": {
+      "user_id": 123,
+      "Name": "John Doe",
+      "email": "john@example.com"
+    },
+    "CreateAt": "2023-10-01T10:00:00.000Z",
+    "UpdatedBy": null,
+    "UpdatedAt": "2023-10-01T10:00:00.000Z"
+  }
+}
+```
+
+---
+
+### Update Payment Method
+**PUT** `/update`
+
+Updates an existing payment method.
+
+**Request Body:**
+```json
+{
+  "id": 1,
+  "name": "Cash Payment",
+  "Status": true
+}
+```
+
+**Required Fields:**
+- `id` (number) - Payment ID to update
+
+**Optional Fields:**
+- `name` (string)
+- `Status` (boolean)
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "message": "Payment updated successfully",
+  "data": {
+    "Payment_id": 1,
+    "name": "Cash Payment",
+    "Status": true,
+    "CreateBy": {
+      "user_id": 123,
+      "Name": "John Doe",
+      "email": "john@example.com"
+    },
+    "CreateAt": "2023-10-01T10:00:00.000Z",
+    "UpdatedBy": {
+      "user_id": 123,
+      "Name": "John Doe",
+      "email": "john@example.com"
+    },
+    "UpdatedAt": "2023-10-01T10:30:00.000Z"
+  }
+}
+```
+
+---
+
+### Get Payment Method by ID
+**GET** `/getbyid/:id`
+
+Retrieves a specific payment method by ID.
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "Payment_id": 1,
+    "name": "Cash",
+    "Status": true,
+    "CreateBy": {
+      "user_id": 123,
+      "Name": "John Doe",
+      "email": "john@example.com"
+    },
+    "CreateAt": "2023-10-01T10:00:00.000Z",
+    "UpdatedBy": null,
+    "UpdatedAt": "2023-10-01T10:00:00.000Z"
+  }
+}
+```
+
+---
+
+### Get All Payment Methods
+**GET** `/getall`
+
+Retrieves all active payment methods.
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "count": 3,
+  "data": [
+    {
+      "Payment_id": 1,
+      "name": "Cash",
+      "Status": true,
+      "CreateBy": {
+        "user_id": 123,
+        "Name": "John Doe",
+        "email": "john@example.com"
+      },
+      "CreateAt": "2023-10-01T10:00:00.000Z"
+    },
+    {
+      "Payment_id": 2,
+      "name": "Card",
+      "Status": true,
+      "CreateBy": {
+        "user_id": 123,
+        "Name": "John Doe",
+        "email": "john@example.com"
+      },
+      "CreateAt": "2023-10-01T10:05:00.000Z"
+    },
+    {
+      "Payment_id": 3,
+      "name": "Bank Transfer",
+      "Status": true,
+      "CreateBy": {
+        "user_id": 123,
+        "Name": "John Doe",
+        "email": "john@example.com"
+      },
+      "CreateAt": "2023-10-01T10:10:00.000Z"
+    }
+  ]
+}
+```
+
+---
+
+### Get Payment Methods by Auth
+**GET** `/getbyauth`
+
+Retrieves payment methods created by the authenticated user.
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "count": 2,
+  "data": [
+    {
+      "Payment_id": 1,
+      "name": "Cash",
+      "Status": true,
+      "CreateBy": {
+        "user_id": 123,
+        "Name": "John Doe",
+        "email": "john@example.com"
+      },
+      "CreateAt": "2023-10-01T10:00:00.000Z",
+      "UpdatedBy": null,
+      "UpdatedAt": "2023-10-01T10:00:00.000Z"
+    },
+    {
+      "Payment_id": 2,
+      "name": "Card",
+      "Status": true,
+      "CreateBy": {
+        "user_id": 123,
+        "Name": "John Doe",
+        "email": "john@example.com"
+      },
+      "CreateAt": "2023-10-01T10:05:00.000Z",
+      "UpdatedBy": {
+        "user_id": 123,
+        "Name": "John Doe",
+        "email": "john@example.com"
+      },
+      "UpdatedAt": "2023-10-01T10:30:00.000Z"
+    }
+  ]
+}
+```
 
 ---
 

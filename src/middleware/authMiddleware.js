@@ -58,7 +58,8 @@ const auth = async (req, res, next) => {
       id: user.user_id, // Use the numeric user_id instead of MongoDB _id
       user_id: user.user_id,
       email: user.email,
-      role: user.Role_id
+      role: user.Role_id,
+      restaurant_id: user.user_id // For restaurant users, user_id serves as restaurant_id
     };
     next();
   } catch (error) {
