@@ -7,6 +7,7 @@ const item_Variants = require('../models/item_Variants.model');
 const Customer = require('../models/Customer.model');
 const Table = require('../models/Table.model');
 const Kitchen = require('../models/Kitchen.model');
+const { CustomerTransaction } = require('../models/TriaxxPaymentModel.model');
 
 const RESTAURANT_ROLE_NAME = 'restaurant';
 
@@ -56,6 +57,50 @@ const resolveRestaurantIdForRequest = async ({ requesterIsRestaurant, requesterU
 const ensureRestaurantOwnership = (posOrder, requesterIsRestaurant, requesterUserId) => {
   if (requesterIsRestaurant && posOrder.Restaurant_id !== requesterUserId) {
     throw createHttpError(403, 'You are not allowed to modify orders for another restaurant');
+  }
+};
+
+// Helper function to record customer transaction when payment is successful
+const recordCustomerTransaction = async (posOrder, paymentMethod = 'Cash') => {
+  try {
+    // Only record if order has a customer and transaction doesn't already exist
+    if (!posOrder.Customer_id || posOrder.transaction_id) {
+      return null;
+    }
+
+    // Determine payment method based on context (this could be enhanced with more logic)
+    const paymentMethodUsed = paymentMethod === 'Cash' ? 'Cash' :
+                             paymentMethod === 'Card' ? 'Bank_Card' :
+                             paymentMethod === 'Mobile_Money' ? 'Mobile_Money' : 'Cash';
+
+    // Calculate merchant receives (total - any provider fees)
+    // For now, assume no provider fees for simplicity - this can be enhanced
+    const merchantReceives = posOrder.Total;
+
+    const transaction = new CustomerTransaction({
+      merchant_id: posOrder.Restaurant_id,
+      order_id: posOrder.POS_Order_id,
+      customer_id: posOrder.Customer_id,
+      transaction_amount: posOrder.Total,
+      payment_method_used: paymentMethodUsed,
+      transaction_status: 'Success',
+      settlement_status: 'Settled', // Immediate settlement for POS
+      merchant_receives: merchantReceives,
+      currency: 'XOF', // Default currency
+      CreateBy: posOrder.CreateBy
+    });
+
+    const savedTransaction = await transaction.save();
+
+    // Update order with transaction reference
+    posOrder.transaction_id = savedTransaction.CustomerTransaction_id;
+    await posOrder.save();
+
+    return savedTransaction;
+  } catch (error) {
+    console.error('Error recording customer transaction:', error);
+    // Don't throw error to avoid breaking order update
+    return null;
   }
 };
 
@@ -258,6 +303,11 @@ const updatePosOrder = async (req, res) => {
     if (Order_Status !== undefined) posOrder.Order_Status = Order_Status;
     if (payment_status !== undefined) posOrder.payment_status = payment_status;
     if (transaction_id !== undefined) posOrder.transaction_id = transaction_id;
+
+    // Record customer transaction if payment status is changed to Success
+    if (payment_status === 'Success' && posOrder.payment_status === 'Success') {
+      await recordCustomerTransaction(posOrder, 'Cash'); // Default to Cash, can be enhanced
+    }
     if (Restaurant_id !== undefined || requesterIsRestaurant) {
       const resolvedRestaurantId = await resolveRestaurantIdForRequest({
         requesterIsRestaurant,

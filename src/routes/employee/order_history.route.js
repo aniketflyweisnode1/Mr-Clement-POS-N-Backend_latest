@@ -18,7 +18,7 @@ router.get('/getbydaterange', auth, getOrderHistoryByDateRange);
 router.get('/getbystatus/:order_status', auth, getOrderHistoryByStatus);
 router.get('/getbytable/:table_id', auth, getOrderHistoryByTable);
 router.get('/getbyclientmobile/:mobile_no', auth, getOrderHistoryByClientMobileNo);
-router.get('/getbyemployeeid/:employee_id', auth, getOrderHistoryByEmployeeId);
+router.get('/getbyemployeeid', auth, getOrderHistoryByEmployeeId);
 router.get('/getbyauth', auth, getOrderHistoryByAuth);
 router.get('/weeklysummary', auth, getWeeklyOrdersSummary);
 
