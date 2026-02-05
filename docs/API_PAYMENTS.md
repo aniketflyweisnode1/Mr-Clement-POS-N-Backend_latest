@@ -7,17 +7,248 @@ All endpoints require authentication via Bearer token in Authorization header.
 ---
 
 ## Table of Contents
-0. [Payment Methods](#0-payment-methods)
-1. [Hardware Sales](#1-hardware-sales)
-2. [Software Subscriptions](#2-software-subscriptions)
-3. [Add-On Modules](#3-add-on-modules)
-4. [Professional Services](#4-professional-services)
-5. [Customer Transactions](#5-customer-transactions)
-6. [Revenue Summary](#6-revenue-summary)
+0. [POS Device Sales Scenarios](#0-pos-device-sales-scenarios)
+1. [Payment Methods](#1-payment-methods)
+2. [Hardware Sales](#2-hardware-sales)
+3. [Software Subscriptions](#3-software-subscriptions)
+4. [Add-On Modules](#4-add-on-modules)
+5. [Professional Services](#5-professional-services)
+6. [Customer Transactions](#6-customer-transactions)
+7. [Revenue Summary](#7-revenue-summary)
 
 ---
 
-## 0. Payment Methods
+## 0. POS Device Sales Scenarios
+
+This section outlines the three POS device sales scenarios supported by Triaxx's API. In all scenarios, payment handling remains merchant-owned - Triaxx only records transactions for reporting purposes.
+
+### Scenario 1: Direct Sale
+Merchant buys POS hardware directly from Triaxx, subscribes to software, and processes payments independently.
+
+**Hardware Sale Request:**
+```json
+POST /api/v1/payments/hardware-sales/create
+Authorization: Bearer <your_jwt_token>
+Content-Type: application/json
+
+{
+  "merchant_id": 123,
+  "reseller_id": null,
+  "hardware_type": "POS_Terminal",
+  "hardware_model": "XT-500",
+  "quantity": 2,
+  "unit_price": 150000,
+  "discount_percentage": 0,
+  "payment_method": "Bank_Transfer",
+  "invoice_number": "INV-2024-001",
+  "warranty_months": 12,
+  "notes": "Direct sale to merchant"
+}
+```
+
+**Hardware Sale Response:**
+```json
+{
+  "success": true,
+  "message": "Hardware sale recorded successfully",
+  "data": {
+    "HardwareSale_id": 1,
+    "merchant_id": 123,
+    "reseller_id": null,
+    "hardware_type": "POS_Terminal",
+    "hardware_model": "XT-500",
+    "quantity": 2,
+    "unit_price": 150000,
+    "total_amount": 300000,
+    "discount_percentage": 0,
+    "discount_amount": 0,
+    "final_amount": 300000,
+    "payment_method": "Bank_Transfer",
+    "payment_status": "Pending",
+    "invoice_number": "INV-2024-001",
+    "warranty_months": 12,
+    "warranty_expiry": "2025-02-03T10:30:00.000Z",
+    "notes": "Direct sale to merchant",
+    "CreateBy": 456,
+    "CreateAt": "2024-02-03T10:30:00.000Z"
+  }
+}
+```
+
+**Software Subscription Request:**
+```json
+POST /api/v1/payments/subscriptions/create
+Authorization: Bearer <your_jwt_token>
+Content-Type: application/json
+
+{
+  "merchant_id": 123,
+  "plan_tier": "Pro",
+  "billing_cycle": "Annual",
+  "monthly_price": 0,
+  "quarterly_price": 0,
+  "annual_price": 500000,
+  "discount_percentage": 0,
+  "payment_method": "Bank_Transfer",
+  "auto_renew": true
+}
+```
+
+**Software Subscription Response:**
+```json
+{
+  "success": true,
+  "message": "Software subscription created successfully",
+  "data": {
+    "SoftwareSubscription_id": 1,
+    "merchant_id": 123,
+    "plan_tier": "Pro",
+    "billing_cycle": "Annual",
+    "monthly_price": 0,
+    "quarterly_price": 0,
+    "annual_price": 500000,
+    "billing_price": 500000,
+    "discount_percentage": 0,
+    "discount_amount": 0,
+    "final_billing_amount": 500000,
+    "subscription_start_date": "2024-02-03T10:30:00.000Z",
+    "subscription_end_date": "2025-02-03T10:30:00.000Z",
+    "next_billing_date": "2025-02-03T10:30:00.000Z",
+    "auto_renew": true,
+    "payment_method": "Bank_Transfer",
+    "payment_status": "Pending",
+    "subscription_status": "Active",
+    "CreateBy": 456,
+    "CreateAt": "2024-02-03T10:30:00.000Z"
+  }
+}
+```
+
+### Scenario 2: Reseller Sale
+Reseller sells hardware + subscription to merchant. Triaxx earns via wholesale pricing/subscription. Merchant relationship unchanged.
+
+**Hardware Sale Request (via Reseller):**
+```json
+POST /api/v1/payments/hardware-sales/create
+Authorization: Bearer <your_jwt_token>
+Content-Type: application/json
+
+{
+  "merchant_id": 123,
+  "reseller_id": 456,
+  "hardware_type": "POS_Terminal",
+  "hardware_model": "XT-500",
+  "quantity": 2,
+  "unit_price": 120000,
+  "discount_percentage": 20,
+  "payment_method": "Bank_Transfer",
+  "invoice_number": "INV-2024-002",
+  "warranty_months": 12,
+  "notes": "Sold through reseller partnership"
+}
+```
+
+**Hardware Sale Response (via Reseller):**
+```json
+{
+  "success": true,
+  "message": "Hardware sale recorded successfully",
+  "data": {
+    "HardwareSale_id": 2,
+    "merchant_id": 123,
+    "reseller_id": 456,
+    "hardware_type": "POS_Terminal",
+    "hardware_model": "XT-500",
+    "quantity": 2,
+    "unit_price": 120000,
+    "total_amount": 240000,
+    "discount_percentage": 20,
+    "discount_amount": 48000,
+    "final_amount": 192000,
+    "payment_method": "Bank_Transfer",
+    "payment_status": "Pending",
+    "invoice_number": "INV-2024-002",
+    "warranty_months": 12,
+    "warranty_expiry": "2025-02-03T10:30:00.000Z",
+    "notes": "Sold through reseller partnership",
+    "CreateBy": 456,
+    "CreateAt": "2024-02-03T10:30:00.000Z"
+  }
+}
+```
+
+**Software Subscription Request (via Reseller):**
+```json
+POST /api/v1/payments/subscriptions/create
+Authorization: Bearer <your_jwt_token>
+Content-Type: application/json
+
+{
+  "merchant_id": 123,
+  "plan_tier": "Pro",
+  "billing_cycle": "Annual",
+  "monthly_price": 0,
+  "quarterly_price": 0,
+  "annual_price": 500000,
+  "discount_percentage": 10,
+  "payment_method": "Bank_Transfer",
+  "auto_renew": true
+}
+```
+
+**Software Subscription Response (via Reseller):**
+```json
+{
+  "success": true,
+  "message": "Software subscription created successfully",
+  "data": {
+    "SoftwareSubscription_id": 2,
+    "merchant_id": 123,
+    "plan_tier": "Pro",
+    "billing_cycle": "Annual",
+    "monthly_price": 0,
+    "quarterly_price": 0,
+    "annual_price": 500000,
+    "billing_price": 500000,
+    "discount_percentage": 10,
+    "discount_amount": 50000,
+    "final_billing_amount": 450000,
+    "subscription_start_date": "2024-02-03T10:30:00.000Z",
+    "subscription_end_date": "2025-02-03T10:30:00.000Z",
+    "next_billing_date": "2025-02-03T10:30:00.000Z",
+    "auto_renew": true,
+    "payment_method": "Bank_Transfer",
+    "payment_status": "Pending",
+    "subscription_status": "Active",
+    "CreateBy": 456,
+    "CreateAt": "2024-02-03T10:30:00.000Z"
+  }
+}
+```
+
+### Scenario 3: Software-Only
+Merchant uses own hardware, pays only for software subscription.
+
+**Software Subscription Request:**
+```json
+{
+  "merchant_id": 123,
+  "plan_tier": "Starter",
+  "billing_cycle": "Monthly",
+  "monthly_price": 25000,
+  "quarterly_price": 0,
+  "annual_price": 0,
+  "discount_percentage": 0,
+  "payment_method": "Mobile_Money",
+  "auto_renew": true
+}
+```
+
+**Note:** No hardware sale record is created for software-only scenarios. The merchant relationship and payment handling remain unchanged across all scenarios.
+
+---
+
+## 1. Payment Methods
 
 Base URL: `/api/v1/admin/payments`
 
@@ -1086,6 +1317,12 @@ The token should contain:
 ---
 
 ## Change Log
+
+### 2024-02-03
+- Added POS Device Sales Scenarios section with comprehensive JSON request/response examples
+- Documented three sales scenarios: Direct Sale, Reseller Sale, and Software-Only
+- Included full API endpoint details with authentication headers
+- Added detailed response examples showing calculated fields and relationships
 
 ### 2026-02-03
 - Added `/services/:id/complete` endpoint for marking services as complete

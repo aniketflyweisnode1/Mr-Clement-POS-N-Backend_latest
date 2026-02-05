@@ -7,11 +7,13 @@ Base URL: `/api/v1`
 ---
 
 ## Table of Contents
+0. [Restaurant Dashboard (Admin)](./API_RESTAURANT_DASHBOARD.md)
 1. [Employee Dashboard](#1-employee-dashboard)
-2. [Quick Orders](#2-quick-orders)
-3. [Table Booking](#3-table-booking)
-4. [Order History](#4-order-history)
-5. [Employee Management](#5-employee-management)
+2. [Employee Settings](#2-employee-settings)
+3. [Quick Orders](#3-quick-orders)
+4. [Table Booking](#4-table-booking)
+5. [Order History](#5-order-history)
+6. [Employee Management](#6-employee-management)
 
 ---
 
@@ -90,7 +92,293 @@ Retrieves subscription renewal alerts (expiring within 30 days).
 
 ---
 
-## 2. Quick Orders
+## 2. Employee Settings
+
+### Get Employee Profile
+
+**GET** `/employee/profile`
+
+Retrieves the profile information of the authenticated employee.
+
+**Authentication Required:** Yes
+
+**Request Body:** No request body required
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Employee profile retrieved successfully",
+  "data": {
+    "user_id": 123,
+    "Name": "John Doe",
+    "email": "john.doe@restaurant.com",
+    "phone": "+1234567890",
+    "Role_id": {
+      "Role_id": 2,
+      "role_name": "Waiter"
+    },
+    "restaurant_id": 456,
+    "Status": true,
+    "CreateAt": "2024-01-01T00:00:00.000Z"
+  }
+}
+```
+
+---
+
+### Update Employee Profile
+
+**PUT** `/employee/profile`
+
+Updates the profile information of the authenticated employee.
+
+**Authentication Required:** Yes
+
+**Request Body:**
+```json
+{
+  "Name": "John Smith",
+  "phone": "+1234567891",
+  "email": "john.smith@restaurant.com"
+}
+```
+
+**Optional Fields:**
+- `Name` (string)
+- `phone` (string)
+- `email` (string, must be unique)
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Employee profile updated successfully",
+  "data": {
+    "user_id": 123,
+    "Name": "John Smith",
+    "email": "john.smith@restaurant.com",
+    "phone": "+1234567891",
+    "UpdatedAt": "2024-02-03T10:30:00.000Z"
+  }
+}
+```
+
+---
+
+### Change Employee Password
+
+**PUT** `/employee/profile/change-password`
+
+Changes the password of the authenticated employee.
+
+**Authentication Required:** Yes
+
+**Request Body:**
+```json
+{
+  "current_password": "currentpassword123",
+  "new_password": "newpassword456",
+  "confirm_password": "newpassword456"
+}
+```
+
+**Required Fields:**
+- `current_password` (string)
+- `new_password` (string)
+- `confirm_password` (string, must match new_password)
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Password changed successfully"
+}
+```
+
+---
+
+### Get Employee Preferences
+
+**GET** `/employee/preferences`
+
+Retrieves the preferences/settings of the authenticated employee.
+
+**Authentication Required:** Yes
+
+**Request Body:** No request body required
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Employee preferences retrieved successfully",
+  "data": {
+    "user_id": 123,
+    "language": "en",
+    "theme": "light",
+    "notifications": {
+      "email": true,
+      "push": true,
+      "sms": false
+    },
+    "dashboard_layout": "compact",
+    "quick_actions": ["new_order", "table_booking", "customer_search"]
+  }
+}
+```
+
+---
+
+### Update Employee Preferences
+
+**PUT** `/employee/preferences`
+
+Updates the preferences/settings of the authenticated employee.
+
+**Authentication Required:** Yes
+
+**Request Body:**
+```json
+{
+  "language": "fr",
+  "theme": "dark",
+  "notifications": {
+    "email": true,
+    "push": false,
+    "sms": true
+  },
+  "dashboard_layout": "detailed",
+  "quick_actions": ["new_order", "table_booking", "order_history"]
+}
+```
+
+**Optional Fields:**
+- `language` (string) - Language preference
+- `theme` (string) - UI theme preference
+- `notifications` (object) - Notification preferences
+- `dashboard_layout` (string) - Dashboard layout preference
+- `quick_actions` (array) - Quick action buttons
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Employee preferences updated successfully",
+  "data": {
+    "user_id": 123,
+    "language": "fr",
+    "theme": "dark",
+    "notifications": {
+      "email": true,
+      "push": false,
+      "sms": true
+    },
+    "dashboard_layout": "detailed",
+    "quick_actions": ["new_order", "table_booking", "order_history"],
+    "UpdatedAt": "2024-02-03T10:30:00.000Z"
+  }
+}
+```
+
+---
+
+### Get Employee Notifications
+
+**GET** `/employee/notifications?page=1&limit=10&read=false`
+
+Retrieves notifications for the authenticated employee.
+
+**Authentication Required:** Yes
+
+**Query Parameters:**
+- `page` (number, optional, default: 1)
+- `limit` (number, optional, default: 10)
+- `read` (boolean, optional) - Filter by read status
+
+**Request Body:** No request body required
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Employee notifications retrieved successfully",
+  "data": [
+    {
+      "notification_id": 1,
+      "title": "New Order Assigned",
+      "message": "You have been assigned a new order #12345",
+      "type": "order",
+      "is_read": false,
+      "created_at": "2024-02-03T09:00:00.000Z"
+    },
+    {
+      "notification_id": 2,
+      "title": "Shift Reminder",
+      "message": "Your shift starts in 30 minutes",
+      "type": "reminder",
+      "is_read": true,
+      "created_at": "2024-02-03T08:30:00.000Z"
+    }
+  ],
+  "pagination": {
+    "total": 25,
+    "page": 1,
+    "limit": 10,
+    "pages": 3
+  }
+}
+```
+
+---
+
+### Mark Notification as Read
+
+**PUT** `/employee/notifications/:notification_id/read`
+
+Marks a specific notification as read.
+
+**Authentication Required:** Yes
+
+**Path Parameters:**
+- `notification_id` (number, required)
+
+**Request Body:** No request body required
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Notification marked as read"
+}
+```
+
+---
+
+### Mark All Notifications as Read
+
+**PUT** `/employee/notifications/mark-all-read`
+
+Marks all notifications as read for the authenticated employee.
+
+**Authentication Required:** Yes
+
+**Request Body:** No request body required
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "All notifications marked as read",
+  "data": {
+    "marked_count": 5
+  }
+}
+```
+
+---
+
+## 3. Quick Orders
 
 ### Create Quick Order
 
@@ -207,7 +495,7 @@ Retrieves quick orders for the authenticated employee.
 
 ---
 
-## 3. Table Booking
+## 4. Table Booking
 
 ### Get All Tables
 
@@ -346,7 +634,7 @@ Retrieves table bookings with filtering options.
 
 ---
 
-## 4. Order History
+## 5. Order History
 
 ### Get All Order History
 
@@ -491,7 +779,7 @@ Retrieves weekly order summary with statistics.
 
 ---
 
-## 5. Employee Management
+## 6. Employee Management
 
 ### Get Employees by Role ID
 
@@ -525,7 +813,152 @@ Retrieves employees for a specific restaurant and role.
 ---
 ---
 
+### Get Employee Work Summary Report
+
+**GET** `/employee/work-summary/:employeeId`
+
+Retrieves a comprehensive work summary report for a specific employee including attendance, performance metrics, order handling statistics, and recent activity.
+
+**Authentication Required:** Yes
+
+**Path Parameters:**
+- `employeeId` (number, required) - Employee ID to generate report for
+
+**Query Parameters:**
+- `startDate` (string, optional) - Start date in YYYY-MM-DD format (defaults to start of current month)
+- `endDate` (string, optional) - End date in YYYY-MM-DD format (defaults to today)
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Employee work summary report generated successfully",
+  "data": {
+    "employee_info": {
+      "user_id": 123,
+      "name": "John Doe",
+      "email": "john.doe@restaurant.com",
+      "phone": "+1234567890",
+      "employee_id": "EMP001",
+      "role": {
+        "Role_id": 2,
+        "role_name": "Waiter"
+      },
+      "responsibility": {
+        "Responsibility_id": 1,
+        "Responsibility_name": "Customer Service"
+      },
+      "location": {
+        "country": {
+          "Country_id": 1,
+          "Country_name": "United States"
+        },
+        "state": {
+          "State_id": 1,
+          "state_name": "California"
+        },
+        "city": {
+          "City_id": 1,
+          "City_name": "Los Angeles"
+        }
+      },
+      "onboarding_date": "2023-01-15T00:00:00.000Z",
+      "status": true
+    },
+    "report_period": {
+      "start_date": "2024-01-01",
+      "end_date": "2024-01-31"
+    },
+    "today_progress": {
+      "work_time": "05:45",
+      "hrs_left": "03:15",
+      "percentage": 65
+    },
+    "weekly_summary": {
+      "total_amount": 9600,
+      "currency": "XOF",
+      "chart_data": [
+        { "day": "S", "amount": 1200 },
+        { "day": "M", "amount": 1500 },
+        { "day": "T", "amount": 1100 },
+        { "day": "W", "amount": 1800 },
+        { "day": "T", "amount": 1400 },
+        { "day": "F", "amount": 1600 },
+        { "day": "S", "amount": 1000 }
+      ]
+    },
+    "total_customer": {
+      "count": 322,
+      "growth": "+12.40%",
+      "distribution": {
+        "total": 322,
+        "morning": 80,
+        "noon": 100,
+        "evening": 90,
+        "night": 52
+      }
+    },
+    "total_order_served": {
+      "count": 322,
+      "growth": "+12.40%"
+    },
+    "attendance_summary": {
+      "total_working_days": 22,
+      "average_in_time": "09:15",
+      "average_out_time": "18:30",
+      "average_working_hours": 8.5,
+      "total_working_hours": 187
+    },
+    "performance_metrics": {
+      "total_reviews": 15,
+      "average_rating": 4.2,
+      "rating_distribution": {
+        "excellent": 8,
+        "good": 4,
+        "average": 2,
+        "poor": 1,
+        "terrible": 0
+      }
+    },
+    "order_metrics": {
+      "total_orders": 45,
+      "completed_orders": 42,
+      "pending_orders": 2,
+      "cancelled_orders": 1,
+      "total_revenue": 1250.50
+    },
+    "recent_activity": {
+      "recent_clock_records": [
+        {
+          "date": "2024-01-31T00:00:00.000Z",
+          "in_time": "2024-01-31T09:00:00.000Z",
+          "out_time": "2024-01-31T18:00:00.000Z",
+          "status": true
+        }
+      ],
+      "recent_reviews": [
+        {
+          "review_id": 123,
+          "rating": 5,
+          "review_type": "Customer Service",
+          "created_at": "2024-01-30T20:00:00.000Z"
+        }
+      ],
+      "recent_orders": [
+        {
+          "order_id": 456,
+          "order_status": "Completed",
+          "total_amount": 75.50,
+          "created_at": "2024-01-31T14:30:00.000Z"
+        }
+      ]
+    }
+  }
+}
+```
+
+---
+
 ## API Registration Note
 
 **Note:** Employee registration APIs are documented in the main authentication section (API_AUTH.md) under restaurant registration endpoints. Employee creation is typically handled through the restaurant admin interface after restaurant registration.
-

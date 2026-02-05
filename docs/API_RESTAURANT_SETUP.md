@@ -735,31 +735,96 @@ All endpoints are prefixed with `/api/restaurant`
 - **Description:** Delete admin message with client.
 
 #### Employee Feedback Management
+
+##### Create Employee Feedback
 - **Method:** POST
 - **Path:** `/employee_feedback/create`
 - **Auth Required:** Yes
 - **Description:** Create employee feedback.
+- **Request Body:**
+  ```json
+  {
+    "employee_id": 1,
+    "order_id": 123,
+    "feedback": "Great service!",
+    "date": "2024-01-15",
+    "amount": 25.50,
+    "ratings": 5,
+    "willRecommendothers": true,
+    "OveralFeedback": "lovedit",
+    "staffBehavier": "Excellent",
+    "waitingTime": 10,
+    "Status": true
+  }
+  ```
 
+##### Update Employee Feedback
 - **Method:** PUT
 - **Path:** `/employee_feedback/update`
 - **Auth Required:** Yes
 - **Description:** Update employee feedback.
+- **Request Body:**
+  ```json
+  {
+    "id": 1,
+    "employee_id": 1,
+    "order_id": 123,
+    "feedback": "Updated feedback",
+    "ratings": 4,
+    "willRecommendothers": true
+  }
+  ```
 
+##### Get Employee Feedback by ID
 - **Method:** GET
 - **Path:** `/employee_feedback/get/:id`
 - **Auth Required:** Yes
 - **Description:** Get employee feedback by ID.
 
+##### Get All Employee Feedbacks
 - **Method:** GET
 - **Path:** `/employee_feedback/getall`
 - **Auth Required:** No
-- **Description:** Get all employee feedbacks.
+- **Description:** Get all employee feedbacks with overall summary.
+- **Response:**
+  ```json
+  {
+    "success": true,
+    "message": "Employee feedback retrieved successfully",
+    "data": {
+      "OveralFeedback": {
+        "lovedit": 10,
+        "good": 5,
+        "averoge": 3,
+        "bad": 1,
+        "warst": 0
+      },
+      "staffBehavier": {
+        "waitingTime": 12.5
+      },
+      "list": [
+        {
+          "emplyeeid": 1,
+          "feedback": "Great service!",
+          "orderid": 123,
+          "date": "2024-01-15T10:00:00.000Z",
+          "amount": 25.50,
+          "ratings": 5,
+          "willRecommendothers": true,
+          "employee_name": "John Doe"
+        }
+      ]
+    }
+  }
+  ```
 
+##### Get Employee Feedbacks by Auth
 - **Method:** GET
 - **Path:** `/employee_feedback/getbyauth`
 - **Auth Required:** Yes
 - **Description:** Get employee feedbacks by authenticated user.
 
+##### Delete Employee Feedback
 - **Method:** DELETE
 - **Path:** `/employee_feedback/delete/:id`
 - **Auth Required:** Yes

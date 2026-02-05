@@ -2024,29 +2024,30 @@ const dashboard = async (req, res) => {
     }
 
     // Get all employees created by this restaurant
-    const employees = await User.find({ 
-      CreateBy: restaurantId, 
-      Status: true 
+    const employees = await User.find({
+      CreateBy: restaurantId,
+      Status: true
     });
     const employeeIds = employees.map(emp => emp.user_id);
 
     // Get all orders for this restaurant
-    const posOrderQuery = { 
+    const posOrderQuery = {
       Restaurant_id: restaurantId,
       Status: true
     };
-    
-    const quickOrderQuery = { 
+
+    const quickOrderQuery = {
       Status: true
     };
-    
+
     if (employeeIds.length > 0) {
       quickOrderQuery['get_order_Employee_id'] = { $in: employeeIds };
     }
 
-    const [posOrders, quickOrders] = await Promise.all([
+    const [posOrders, quickOrders, allCustomers] = await Promise.all([
       Pos_Point_sales_Order.find(posOrderQuery),
-      Quick_Order.find(quickOrderQuery)
+      Quick_Order.find(quickOrderQuery),
+      employeeIds.length > 0 ? Customer.find({ CreateBy: { $in: employeeIds }, Status: true }) : []
     ]);
 
     // 1. Calculate TotalOrders
@@ -2054,9 +2055,35 @@ const dashboard = async (req, res) => {
 
     // 2. Calculate TotalSales
     const TotalSales = [...posOrders, ...quickOrders].reduce(
-      (sum, order) => sum + (order.Total || 0), 
+      (sum, order) => sum + (order.Total || 0),
       0
     );
+
+    // 3. Calculate NewCustomers and RepeatCustomers
+    const customerOrderCounts = {};
+
+    // Count orders per customer from POS orders
+    posOrders.forEach(order => {
+      if (order.Customer_id) {
+        customerOrderCounts[order.Customer_id] = (customerOrderCounts[order.Customer_id] || 0) + 1;
+      }
+    });
+
+    // Count orders per customer from Quick orders
+    quickOrders.forEach(order => {
+      if (order.client_mobile_no) {
+        const customer = allCustomers.find(c => c.phone === order.client_mobile_no);
+        if (customer) {
+          customerOrderCounts[customer.Customer_id] = (customerOrderCounts[customer.Customer_id] || 0) + 1;
+        }
+      }
+    });
+
+    // Calculate new customers (total customers created by restaurant employees)
+    const NewCustomers = allCustomers.length;
+
+    // Calculate repeat customers (customers with more than 1 order)
+    const RepeatCustomers = Object.values(customerOrderCounts).filter(count => count > 1).length;
 
     // 3. Get TopSellers (limit 10) - Top selling items
     const itemCounts = {};
@@ -2125,6 +2152,8 @@ const dashboard = async (req, res) => {
     const dashboardData = {
       TotalOrders,
       TotalSales: parseFloat(TotalSales.toFixed(2)),
+      NewCustomers,
+      RepeatCustomers,
       TopSellers,
       StockAlerts
     };

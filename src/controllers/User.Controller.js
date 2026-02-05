@@ -11,6 +11,7 @@ const SubAdmin_Permissions = require('../models/SubAdmin_Permissions.model');
 const Clock = require('../models/Clock.model');
 const Review = require('../models/Review.model');
 const Clients = require('../models/Clients.model');
+const Pos_Point_sales_Order = require('../models/Pos_Point_sales_Order.model');
 const { generateEmployeeId } = require('../utils/employeeIdGenerator');
 
 // Create User
@@ -2192,6 +2193,297 @@ const changePasswordRestaurantByAdmin = async (req, res) => {
   }
 };
 
+// Get Employee Work Summary Report
+const getEmployeeWorkSummaryReport = async (req, res) => {
+  try {
+    const { employeeId } = req.params;
+    const { startDate, endDate } = req.query;
+    const parsedEmployeeId = parseInt(employeeId);
+
+    if (!employeeId || isNaN(parsedEmployeeId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Valid employee ID is required'
+      });
+    }
+
+    // Find employee
+    const employee = await User.findOne({ user_id: parsedEmployeeId, Status: true });
+
+    if (!employee) {
+      return res.status(404).json({
+        success: false,
+        message: 'Employee not found'
+      });
+    }
+
+    // Parse date range
+    const start = startDate ? new Date(startDate) : new Date(new Date().getFullYear(), new Date().getMonth(), 1); // Start of current month
+    const end = endDate ? new Date(endDate) : new Date(); // Today
+
+    // Fetch clock records for the period
+    const clockRecords = await Clock.find({
+      user_id: parsedEmployeeId,
+      Status: true,
+      date: { $gte: start, $lte: end }
+    }).sort({ date: -1 });
+
+    // Fetch reviews for the period
+    const reviews = await Review.find({
+      for_Review_id: parsedEmployeeId,
+      Status: true,
+      CreateAt: { $gte: start, $lte: end }
+    }).sort({ CreateAt: -1 });
+
+    // Fetch orders handled by the employee
+    const ordersHandled = await Pos_Point_sales_Order.find({
+      get_order_Employee_id: parsedEmployeeId,
+      Status: true,
+      CreateAt: { $gte: start, $lte: end }
+    }).sort({ CreateAt: -1 });
+
+    // Calculate shift timings
+    let shiftTimings = {
+      total_working_days: 0,
+      average_in_time: null,
+      average_out_time: null,
+      average_working_hours: 0,
+      total_working_hours: 0
+    };
+
+    if (clockRecords.length > 0) {
+      const validRecords = clockRecords.filter(record => record.in_time && record.out_time);
+      shiftTimings.total_working_days = validRecords.length;
+
+      if (validRecords.length > 0) {
+        let totalInMinutes = 0;
+        let totalOutMinutes = 0;
+        let totalWorkingHours = 0;
+
+        validRecords.forEach(record => {
+          const inTime = new Date(record.in_time);
+          const outTime = new Date(record.out_time);
+
+          const inHours = inTime.getHours();
+          const inMinutes = inTime.getMinutes();
+          totalInMinutes += (inHours * 60) + inMinutes;
+
+          const outHours = outTime.getHours();
+          const outMinutes = outTime.getMinutes();
+          totalOutMinutes += (outHours * 60) + outMinutes;
+
+          const workingMs = outTime - inTime;
+          const workingHours = workingMs / (1000 * 60 * 60);
+          totalWorkingHours += workingHours;
+        });
+
+        const avgInMinutes = Math.floor(totalInMinutes / validRecords.length);
+        const avgOutMinutes = Math.floor(totalOutMinutes / validRecords.length);
+
+        const avgInHours = Math.floor(avgInMinutes / 60);
+        const avgInMins = avgInMinutes % 60;
+        const avgOutHours = Math.floor(avgOutMinutes / 60);
+        const avgOutMins = avgOutMinutes % 60;
+
+        shiftTimings.average_in_time = `${String(avgInHours).padStart(2, '0')}:${String(avgInMins).padStart(2, '0')}`;
+        shiftTimings.average_out_time = `${String(avgOutHours).padStart(2, '0')}:${String(avgOutMins).padStart(2, '0')}`;
+        shiftTimings.average_working_hours = parseFloat((totalWorkingHours / validRecords.length).toFixed(2));
+        shiftTimings.total_working_hours = parseFloat(totalWorkingHours.toFixed(2));
+      }
+    }
+
+    // Calculate performance metrics
+    const performanceMetrics = {
+      total_reviews: reviews.length,
+      average_rating: 0,
+      rating_distribution: {
+        excellent: 0, // 5 stars
+        good: 0,      // 4 stars
+        average: 0,   // 3 stars
+        poor: 0,      // 2 stars
+        terrible: 0   // 1 star
+      }
+    };
+
+    if (reviews.length > 0) {
+      const totalRating = reviews.reduce((sum, review) => sum + (review.ReviewStarCount || 0), 0);
+      performanceMetrics.average_rating = parseFloat((totalRating / reviews.length).toFixed(2));
+
+      reviews.forEach(review => {
+        const rating = review.ReviewStarCount || 0;
+        if (rating === 5) performanceMetrics.rating_distribution.excellent++;
+        else if (rating === 4) performanceMetrics.rating_distribution.good++;
+        else if (rating === 3) performanceMetrics.rating_distribution.average++;
+        else if (rating === 2) performanceMetrics.rating_distribution.poor++;
+        else if (rating === 1) performanceMetrics.rating_distribution.terrible++;
+      });
+    }
+
+    // Calculate order metrics
+    const orderMetrics = {
+      total_orders: ordersHandled.length,
+      completed_orders: ordersHandled.filter(order => order.Order_Status === 'Completed').length,
+      pending_orders: ordersHandled.filter(order => order.Order_Status === 'Pending').length,
+      cancelled_orders: ordersHandled.filter(order => order.Order_Status === 'Cancelled').length,
+      total_revenue: ordersHandled.reduce((sum, order) => sum + (order.Total_Amount || 0), 0)
+    };
+
+    // Fetch related data for employee
+    const [responsibility, role, language, country, state, city] = await Promise.all([
+      Responsibility.findOne({ Responsibility_id: employee.Responsibility_id }),
+      Role.findOne({ Role_id: employee.Role_id }),
+      Language.findOne({ Language_id: employee.Language_id }),
+      Country.findOne({ Country_id: employee.Country_id }),
+      State.findOne({ State_id: employee.State_id }),
+      City.findOne({ City_id: employee.City_id })
+    ]);
+
+    // Prepare employee basic info
+    const employeeInfo = {
+      user_id: employee.user_id,
+      name: `${employee.Name} ${employee.last_name}`.trim(),
+      email: employee.email,
+      phone: employee.phone,
+      employee_id: employee.Employee_id,
+      role: role ? { Role_id: role.Role_id, role_name: role.role_name } : null,
+      responsibility: responsibility ? { Responsibility_id: responsibility.Responsibility_id, Responsibility_name: responsibility.Responsibility_name } : null,
+      location: {
+        country: country ? { Country_id: country.Country_id, Country_name: country.Country_name } : null,
+        state: state ? { State_id: state.State_id, state_name: state.state_name } : null,
+        city: city ? { City_id: city.City_id, City_name: city.City_name } : null
+      },
+      onboarding_date: employee.OnboardingDate,
+      status: employee.Status
+    };
+
+    // --- Enhanced Metrics for Image-based Work Summary ---
+    const now = new Date();
+    const todayStart = new Date(now.setHours(0, 0, 0, 0));
+    const todayEnd = new Date(now.setHours(23, 59, 59, 999));
+
+    // 1. Today's Progress
+    const todayClock = await Clock.findOne({
+      user_id: parsedEmployeeId,
+      date: { $gte: todayStart, $lte: todayEnd },
+      Status: true
+    });
+
+    let todayProgress = { work_time: "00:00", hrs_left: "09:00", percentage: 0 };
+    if (todayClock && todayClock.in_time) {
+      const inTime = new Date(todayClock.in_time);
+      const outTime = todayClock.out_time ? new Date(todayClock.out_time) : new Date();
+      const diffMs = outTime - inTime;
+      const diffHrs = diffMs / (1000 * 60 * 60);
+      const standardShift = 9; // Default 9 hour shift as per design
+      
+      const hrs = Math.floor(diffHrs);
+      const mins = Math.floor((diffHrs - hrs) * 60);
+      todayProgress.work_time = `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+      
+      const leftHrs = Math.max(0, standardShift - diffHrs);
+      const lHrs = Math.floor(leftHrs);
+      const lMins = Math.floor((leftHrs - lHrs) * 60);
+      todayProgress.hrs_left = `${String(lHrs).padStart(2, '0')}:${String(lMins).padStart(2, '0')}`;
+      todayProgress.percentage = Math.min(100, Math.round((diffHrs / standardShift) * 100));
+    }
+
+    // 2. Weekly Summary (Last 7 Days)
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
+    sevenDaysAgo.setHours(0, 0, 0, 0);
+
+    const weeklyOrders = await Pos_Point_sales_Order.find({
+      CreateBy: parsedEmployeeId,
+      Status: true,
+      CreateAt: { $gte: sevenDaysAgo }
+    });
+
+    const daysMap = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+    const weeklyData = daysMap.map((day, index) => {
+      const dayTotal = weeklyOrders
+        .filter(o => new Date(o.CreateAt).getDay() === index)
+        .reduce((sum, o) => sum + (o.Total || 0), 0);
+      return { day, amount: dayTotal };
+    });
+
+    // 3. Total Customer with Distribution
+    const morningStart = 6, noonStart = 12, eveningStart = 17, nightStart = 21;
+    const customerDist = { total: 0, morning: 0, noon: 0, evening: 0, night: 0 };
+    
+    ordersHandled.forEach(order => {
+      const hour = new Date(order.CreateAt).getHours();
+      customerDist.total++;
+      if (hour >= morningStart && hour < noonStart) customerDist.morning++;
+      else if (hour >= noonStart && hour < eveningStart) customerDist.noon++;
+      else if (hour >= eveningStart && hour < nightStart) customerDist.evening++;
+      else customerDist.night++;
+    });
+
+    // Mock growth percentages for visualization
+    const growth = { customer: "+12.40%", order: "+12.40%" };
+
+    // Prepare comprehensive report
+    const workSummaryReport = {
+      employee_info: employeeInfo,
+      report_period: {
+        start_date: start.toISOString().split('T')[0],
+        end_date: end.toISOString().split('T')[0]
+      },
+      today_progress: todayProgress,
+      weekly_summary: {
+        total_amount: weeklyOrders.reduce((sum, o) => sum + (o.Total || 0), 0),
+        currency: "XOF",
+        chart_data: weeklyData
+      },
+      total_customer: {
+        count: customerDist.total,
+        growth: growth.customer,
+        distribution: customerDist
+      },
+      total_order_served: {
+        count: orderMetrics.completed_orders,
+        growth: growth.order
+      },
+      attendance_summary: shiftTimings,
+      performance_metrics: performanceMetrics,
+      order_metrics: orderMetrics,
+      recent_activity: {
+        recent_clock_records: clockRecords.slice(0, 10).map(record => ({
+          date: record.date,
+          in_time: record.in_time,
+          out_time: record.out_time,
+          status: record.Status
+        })),
+        recent_reviews: reviews.slice(0, 5).map(review => ({
+          review_id: review.Review_id,
+          rating: review.ReviewStarCount,
+          review_type: review.Review_type,
+          created_at: review.CreateAt
+        })),
+        recent_orders: ordersHandled.slice(0, 5).map(order => ({
+          order_id: order.Pos_Order_id,
+          order_status: order.Order_Status,
+          total_amount: order.Total,
+          created_at: order.CreateAt
+        }))
+      }
+    };
+
+    res.status(200).json({
+      success: true,
+      message: 'Employee work summary report generated successfully',
+      data: workSummaryReport
+    });
+  } catch (error) {
+    console.error('Error in getEmployeeWorkSummaryReport:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error generating employee work summary report',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   createUser,
   updateUser,
@@ -2210,5 +2502,6 @@ module.exports = {
   getEmployeesByRoleId,
   logout,
   createEmployee,
-  changePasswordRestaurantByAdmin
+  changePasswordRestaurantByAdmin,
+  getEmployeeWorkSummaryReport
 };
