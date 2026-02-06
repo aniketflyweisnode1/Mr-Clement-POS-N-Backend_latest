@@ -959,6 +959,589 @@ Retrieves a comprehensive work summary report for a specific employee including 
 
 ---
 
+### Complete Order
+
+**PUT** `/employee/complete-order/:orderId`
+
+Completes a POS order by updating its status to 'Completed' and marking all items as completed.
+
+**Authentication Required:** Yes
+
+**Path Parameters:**
+- `orderId` (number, required) - The ID of the order to complete
+
+**Request Body:** No request body required
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Order completed successfully",
+  "data": {
+    "POS_Order_id": 123,
+    "Order_Status": "Completed",
+    "items": [
+      {
+        "item_id": 1,
+        "item_status": "Completed",
+        "item_Quentry": 2
+      }
+    ],
+    "UpdatedBy": 456,
+    "UpdatedAt": "2024-02-03T10:30:00.000Z"
+  }
+}
+```
+
+**Error Responses:**
+- `400` - Order is already completed or cannot be completed
+- `404` - Order not found
+- `403` - Not authorized to modify orders for another restaurant
+
+---
+
+### Cancel Order
+
+**PUT** `/employee/cancel-order/:orderId`
+
+Cancels a POS order by updating its status to 'Cancelled' and marking all items as cancelled.
+
+**Authentication Required:** Yes
+
+**Path Parameters:**
+- `orderId` (number, required) - The ID of the order to cancel
+
+**Request Body:** No request body required
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Order cancelled successfully",
+  "data": {
+    "POS_Order_id": 123,
+    "Order_Status": "Cancelled",
+    "items": [
+      {
+        "item_id": 1,
+        "item_status": "Cancelled",
+        "item_Quentry": 2
+      }
+    ],
+    "UpdatedBy": 456,
+    "UpdatedAt": "2024-02-03T10:30:00.000Z"
+  }
+}
+```
+
+**Error Responses:**
+- `400` - Order is already cancelled or cannot be cancelled
+- `404` - Order not found
+- `403` - Not authorized to modify orders for another restaurant
+
+---
+
+### Get Served Order Details
+
+**GET** `/employee/order-details/:orderId`
+
+Retrieves detailed information for a served or completed order including complete item list with proper price calculations and breakdowns.
+
+**Authentication Required:** Yes
+
+**Path Parameters:**
+- `orderId` (number, required) - The ID of the served order to retrieve details for
+
+**Request Body:** No request body required
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Served order details retrieved successfully",
+  "data": {
+    "POS_Order_id": 123,
+    "Order_Status": "Served",
+    "SubTotal": 45.50,
+    "Tax": 4.55,
+    "Total": 50.05,
+    "Customer_id": 456,
+    "Table_id": 7,
+    "Kitchen_id": 2,
+    "Restaurant_id": 1,
+    "CreateBy_id": 100,
+    "UpdatedBy_id": 100,
+    "CreateBy": {
+      "user_id": 100,
+      "Name": "John Doe",
+      "email": "john.doe@restaurant.com",
+      "Employee_id": "EMP001"
+    },
+    "UpdatedBy": {
+      "user_id": 100,
+      "Name": "John Doe",
+      "email": "john.doe@restaurant.com",
+      "Employee_id": "EMP001"
+    },
+    "items": [
+      {
+        "item_id": 1,
+        "item_Quentry": 2,
+        "item_Addons_id": 5,
+        "item_Variants_id": 3,
+        "item_status": "Served",
+        "item_size": null,
+        "pricing": {
+          "base_price": 15.00,
+          "addon_price": 2.50,
+          "variant_price": 1.00,
+          "unit_price": 18.50,
+          "total_price": 37.00
+        },
+        "Item": {
+          "Items_id": 1,
+          "item_id": 1,
+          "item_name": "Chicken Burger",
+          "item-name": "Chicken Burger",
+          "item-code": "CB001",
+          "item-price": 15.00,
+          "prices": 15.00
+        },
+        "Addon": {
+          "item_Addons_id": 5,
+          "Addons": "Extra Cheese",
+          "prices": 2.50
+        },
+        "Variant": {
+          "item_Variants_id": 3,
+          "Variants": "Large",
+          "prices": 1.00
+        }
+      }
+    ],
+    "Customer": {
+      "Customer_id": 456,
+      "Name": "Jane Smith",
+      "phone": "+1234567890",
+      "Address": "123 Main St, City"
+    },
+    "Table": {
+      "table_id": 7,
+      "table_name": "Table 7",
+      "Table-name": "Table 7",
+      "Table-code": "T007"
+    },
+    "Kitchen": {
+      "kitchen_id": 2,
+      "kitchen_name": "Main Kitchen"
+    },
+    "order_totals": {
+      "subtotal": 37.00,
+      "tax": 3.70,
+      "total": 40.70
+    }
+  }
+}
+```
+
+**Error Responses:**
+- `400` - Order must be served or completed to view details
+- `404` - Order not found
+- `403` - Not authorized to view orders for another restaurant
+
+---
+
+### Process Order Payment
+
+**POST** `/employee/process-payment`
+
+Processes payment for a served or completed order with amount validation and transaction recording.
+
+**Authentication Required:** Yes
+
+**Request Body:**
+```json
+{
+  "orderId": 123,
+  "paymentMethod": "Cash",
+  "paymentAmount": 50.05,
+  "transactionId": "TXN_123456789"
+}
+```
+
+**Required Fields:**
+- `orderId` (number) - The ID of the order to process payment for
+- `paymentMethod` (string) - Payment method (Cash, Card, Mobile_Money)
+- `paymentAmount` (number) - Exact payment amount matching order total
+
+**Optional Fields:**
+- `transactionId` (string) - External transaction reference ID
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Payment processed successfully",
+  "data": {
+    "order_id": 123,
+    "payment_status": "Success",
+    "payment_amount": 50.05,
+    "payment_method": "Cash",
+    "transaction_id": "TXN_123456789",
+    "updated_at": "2024-02-03T10:30:00.000Z"
+  }
+}
+```
+
+**Error Responses:**
+- `400` - Order must be served or completed to process payment, payment already processed, or amount mismatch
+- `404` - Order not found
+- `403` - Not authorized to process payments for another restaurant
+
+---
+
+### Process Payment with Coupon
+
+**POST** `/employee/process-payment-with-coupon`
+
+Processes payment for a served or completed order with a coupon code applied for discount.
+
+**Authentication Required:** Yes
+
+**Request Body:**
+```json
+{
+  "orderId": 123,
+  "paymentMethod": "Cash",
+  "paymentAmount": 45.05,
+  "transactionId": "TXN_123456789",
+  "couponCode": "DISCOUNT10"
+}
+```
+
+**Required Fields:**
+- `orderId` (number) - The ID of the order to process payment for
+- `paymentMethod` (string) - Payment method (Cash, Card, Mobile_Money)
+- `paymentAmount` (number) - Exact discounted payment amount matching order total after coupon
+- `couponCode` (string) - Valid coupon code for discount
+
+**Optional Fields:**
+- `transactionId` (string) - External transaction reference ID
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Payment processed successfully with coupon",
+  "data": {
+    "order_id": 123,
+    "payment_status": "Success",
+    "original_amount": 50.05,
+    "discount_amount": 5.00,
+    "final_amount": 45.05,
+    "coupon_code": "DISCOUNT10",
+    "payment_method": "Cash",
+    "transaction_id": "TXN_123456789",
+    "updated_at": "2024-02-03T10:30:00.000Z",
+    "qr_code_data": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA..."
+  }
+}
+```
+
+**Error Responses:**
+- `400` - Order must be served or completed, payment already processed, amount mismatch, or invalid coupon
+- `404` - Order not found
+- `403` - Not authorized to process payments for another restaurant
+
+---
+
+### Calculate Split Payment Amounts
+
+**POST** `/employee/calculate-split-amounts`
+
+Calculates and returns the split amounts for an order total divided equally into a specified number of parts.
+
+**Authentication Required:** Yes
+
+**Request Body:**
+```json
+{
+  "orderId": 123,
+  "numberOfSplits": 3
+}
+```
+
+**Required Fields:**
+- `orderId` (number) - The ID of the order to calculate split amounts for
+- `numberOfSplits` (number) - Number of equal parts to split the payment into (2-10)
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Split amounts calculated successfully",
+  "data": {
+    "order_id": 123,
+    "total_amount": 50.05,
+    "number_of_splits": 3,
+    "split_amounts": [16.68, 16.68, 16.69],
+    "calculated_at": "2024-02-03T10:30:00.000Z"
+  }
+}
+```
+
+**Error Responses:**
+- `400` - Order must be served or completed, invalid number of splits (must be 2-10)
+- `404` - Order not found
+- `403` - Not authorized to access orders for another restaurant
+
+---
+
+### Process Split Payment
+
+**POST** `/employee/process-split-payment`
+
+Processes split payment for a served or completed order using multiple payment methods.
+
+**Authentication Required:** Yes
+
+**Request Body:**
+```json
+{
+  "orderId": 123,
+  "payments": [
+    {
+      "paymentMethod": "Cash",
+      "amount": 25.00
+    },
+    {
+      "paymentMethod": "Card",
+      "amount": 25.05
+    }
+  ],
+  "transactionId": "TXN_SPLIT_123456789"
+}
+```
+
+**Required Fields:**
+- `orderId` (number) - The ID of the order to process payment for
+- `payments` (array) - Array of payment objects with paymentMethod and amount
+
+**Optional Fields:**
+- `transactionId` (string) - External transaction reference ID
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Split payment processed successfully",
+  "data": {
+    "order_id": 123,
+    "payment_status": "Success",
+    "total_amount": 50.05,
+    "split_payments": [
+      {
+        "method": "Cash",
+        "amount": 25.00
+      },
+      {
+        "method": "Card",
+        "amount": 25.05
+      }
+    ],
+    "transaction_id": "TXN_SPLIT_123456789",
+    "updated_at": "2024-02-03T10:30:00.000Z",
+    "qr_code_data": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA..."
+  }
+}
+```
+
+**Error Responses:**
+- `400` - Order must be served or completed, payment already processed, amount mismatch, or invalid payment methods
+- `404` - Order not found
+- `403` - Not authorized to process payments for another restaurant
+
+---
+
+### Generate Payment Link
+
+**POST** `/employee/generate-payment-link`
+
+Generates a shareable payment link for a served or completed order that customers can use to make payments online.
+
+**Authentication Required:** Yes
+
+**Request Body:**
+```json
+{
+  "orderId": 123,
+  "expiryHours": 24,
+  "paymentMethods": ["Cash", "Card", "Mobile_Money"]
+}
+```
+
+**Required Fields:**
+- `orderId` (number) - The ID of the order to generate payment link for
+
+**Optional Fields:**
+- `expiryHours` (number) - Link expiry time in hours (default: 24)
+- `paymentMethods` (array) - Allowed payment methods (default: ["Cash", "Card", "Mobile_Money"])
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Payment link generated successfully",
+  "data": {
+    "order_id": 123,
+    "payment_link": "http://localhost:3000/payment/a1b2c3d4e5f6...",
+    "payment_token": "a1b2c3d4e5f6...",
+    "amount": 50.05,
+    "currency": "XOF",
+    "expiry_date": "2024-02-04T10:30:00.000Z",
+    "payment_methods": ["Cash", "Card", "Mobile_Money"],
+    "qr_code_data": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA..."
+  }
+}
+```
+
+**Error Responses:**
+- `400` - Order must be served or completed, or payment already completed
+- `404` - Order not found
+- `403` - Not authorized to generate payment links for another restaurant
+
+---
+
+### Process Payment Through Link
+
+**POST** `/employee/payment-link/:paymentToken/process`
+
+Processes payment using a payment link token (typically called from frontend payment page).
+
+**Authentication Required:** No (public endpoint for customers)
+
+**Path Parameters:**
+- `paymentToken` (string, required) - The payment token from the payment link
+
+**Request Body:**
+```json
+{
+  "paymentMethod": "Card",
+  "paymentAmount": 50.05,
+  "transactionId": "TXN_123456789",
+  "customerEmail": "customer@example.com",
+  "customerPhone": "+1234567890"
+}
+```
+
+**Required Fields:**
+- `paymentMethod` (string) - Payment method used
+- `paymentAmount` (number) - Exact payment amount
+
+**Optional Fields:**
+- `transactionId` (string) - External transaction reference
+- `customerEmail` (string) - Customer email
+- `customerPhone` (string) - Customer phone
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Payment processed successfully through link",
+  "data": {
+    "order_id": 123,
+    "payment_status": "Success",
+    "payment_amount": 50.05,
+    "payment_method": "Card",
+    "transaction_id": "TXN_123456789",
+    "processed_at": "2024-02-03T10:30:00.000Z",
+    "customer_details": {
+      "email": "customer@example.com",
+      "phone": "+1234567890"
+    }
+  }
+}
+```
+
+**Error Responses:**
+- `400` - Invalid or expired payment link, payment method not allowed, amount mismatch, or payment already completed
+- `404` - Payment link not found
+
+---
+
+### Get Payment Link Details
+
+**GET** `/employee/payment-link/:paymentToken/details`
+
+Retrieves payment link details for validation and display on payment page.
+
+**Authentication Required:** No (public endpoint for customers)
+
+**Path Parameters:**
+- `paymentToken` (string, required) - The payment token from the payment link
+
+**Request Body:** No request body required
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Payment link details retrieved successfully",
+  "data": {
+    "order_id": 123,
+    "order_status": "Served",
+    "payment_status": "Pending",
+    "amount": 50.05,
+    "currency": "XOF",
+    "expiry_date": "2024-02-04T10:30:00.000Z",
+    "payment_methods": ["Cash", "Card", "Mobile_Money"],
+    "is_expired": false,
+    "is_active": true,
+    "customer": {
+      "name": "John Doe",
+      "phone": "+1234567890",
+      "email": "john.doe@example.com"
+    },
+    "restaurant": {
+      "name": "Restaurant ABC",
+      "address": "123 Main St, City"
+    }
+  }
+}
+```
+
+**Error Responses:**
+- `400` - Payment token is required
+- `404` - Invalid or expired payment link
+
+---
+
+### Get Payment Link QR Code
+
+**GET** `/employee/payment-link/:paymentToken/qr`
+
+Generates and returns a QR code image for the payment link.
+
+**Authentication Required:** No (public endpoint for customers)
+
+**Path Parameters:**
+- `paymentToken` (string, required) - The payment token from the payment link
+
+**Request Body:** No request body required
+
+**Response:** PNG image file
+
+**Response Headers:**
+- `Content-Type: image/png`
+- `Content-Disposition: inline; filename="payment-qr.png"`
+
+**Error Responses:**
+- `400` - Payment token is required or payment link has expired
+- `404` - Invalid or expired payment link
+- `500` - Error generating QR code
+
+---
+
 ## API Registration Note
 
 **Note:** Employee registration APIs are documented in the main authentication section (API_AUTH.md) under restaurant registration endpoints. Employee creation is typically handled through the restaurant admin interface after restaurant registration.
