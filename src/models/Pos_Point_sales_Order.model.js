@@ -49,7 +49,7 @@ const posPointSalesOrderSchema = new mongoose.Schema({
     default: 'Pending'
   },
   transaction_id: {
-    type: Number,
+    type: String,
     ref: 'CustomerTransaction',
     default: null
   },
@@ -94,6 +94,16 @@ const posPointSalesOrderSchema = new mongoose.Schema({
   UpdatedAt: {
     type: Date,
     default: Date.now
+  },
+  payment_link: {
+    orderId: { type: Number },
+    paymentToken: { type: String },
+    amount: { type: Number },
+    currency: { type: String },
+    expiryDate: { type: Date },
+    paymentMethods: [{ type: String }],
+    createdBy: { type: Number },
+    isActive: { type: Boolean, default: true }
   }
 }, {
   timestamps: false,

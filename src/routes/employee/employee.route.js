@@ -10,12 +10,23 @@ const {
   getEmployeeWorkSummaryReport
 } = require('../../controllers/User.Controller.js');
 const { changePassword: changeEmployeePassword } = require('../../controllers/Auth.Controller.js');
-const { 
-  getEmployeePreferences, 
+const {
+  getEmployeePreferences,
   updateEmployeePreferences,
   getEmployeeNotifications,
   markNotificationAsRead,
-  markAllNotificationsAsRead
+  markAllNotificationsAsRead,
+  completeOrder,
+  cancelOrder,
+  getServedOrderDetails,
+  processOrderPayment,
+  processPaymentWithCoupon,
+  calculateSplitAmounts,
+  processSplitPayment,
+  generatePaymentLink,
+  processPaymentLink,
+  getPaymentLinkDetails,
+  getPaymentLinkQR
 } = require('../../controllers/Employee.Controller.js');
 
 // Employee Profile Management
@@ -43,6 +54,23 @@ router.get('/:id', auth, getEmployeeById);
 
 // Get employee work summary report
 router.get('/work-summary/:employeeId', auth, getEmployeeWorkSummaryReport);
+
+// Order Management
+router.put('/complete-order/:orderId', auth, completeOrder);
+router.put('/cancel-order/:orderId', auth, cancelOrder);
+
+// Order Details and Payment
+router.get('/order-details/:orderId', auth, getServedOrderDetails);
+router.post('/process-payment', auth, processOrderPayment);
+router.post('/process-payment-with-coupon', auth, processPaymentWithCoupon);
+router.post('/calculate-split-amounts', auth, calculateSplitAmounts);
+router.post('/process-split-payment', auth, processSplitPayment);
+
+// Payment Link Management
+router.post('/generate-payment-link', auth, generatePaymentLink);
+router.post('/payment-link/:paymentToken/process', processPaymentLink); // Public endpoint
+router.get('/payment-link/:paymentToken/details', getPaymentLinkDetails); // Public endpoint
+router.get('/payment-link/:paymentToken/qr', getPaymentLinkQR); // Public endpoint
 
 module.exports = router;
 
